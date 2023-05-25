@@ -1,3 +1,5 @@
+
+
 # 1、DOS的使用
 
 盘符切换：  d:
@@ -10,6 +12,10 @@ cd..：返回到上一个目录
 cd\:  直接返回至盘符
 cls：清屏
 exit：quit
+
+netstat -ano|findstr"8080":查找端口号8080的占用情况
+
+tasklist|findstr"10112":查找到8080的占用情况后 后面跟随的PID 查询这个PID可以查看是哪个程序在占用
 
 # 2、内存分配问题
 
@@ -1874,7 +1880,7 @@ public class HashCodeDemo
             System.out.print((char)read);//开始转char类型输出语句
         }
 
-​    fis.close();
+    fis.close();
 
 }
 
@@ -2050,7 +2056,7 @@ public class HashCodeDemo
             bw.newLine();//写换行符
             bw.flush();//做一个刷新
         }
-        bw.close();
+        bw.close();	
         br.close();
     }
 }
@@ -2765,3 +2771,1409 @@ public class LeetCode
     }
 }
 ```
+
+# 33、Arrays.sort的比较问题
+
+对于二维数组的比较是这样的
+
+```java
+ Arrays.sort(boxTypes,(a,b)->(a[0]-b[0]));   //这里的函数运用的是compare比较器 (a,b)->(a[0]-b[0])是对第一个元素进行排序 (a,b)->(a[1]-b[1])是对第二个元素进行排序
+```
+
+# 34、MyBatis
+
+- MyBatis是一款持久层框架,用于简化JDBC的开发
+- 几乎免除了所有的JDBC代码以及设置参数和获取结果集的工作
+
+**持久层**
+
+- 负责将数据到保存到数据库的那一层代码
+- JavaEE三层架构:表现层、业务层、持久层
+
+**快速入门**
+
+- 找寻user表中所有数据
+
+1. 创建user表，添加数据(使用了Navicat创建，创建了一个名字为mybatis的数据库里面有一个叫tb_user的表)
+2. 创建模块,导入坐标(就是各种依赖 版本号等等)
+
+​	3.编写MyBatis核心配置文件-->替换连接信息 解决硬编码问题(命名为mybatis-config.xml 位于resources文件中)
+
+```xml
+<!--数据库连接信息 -->
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql:///mybatis?useSSL=false"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123456"/>
+```
+
+​	4.编写SQL映射文件-->统一管理sql语句,解决硬编码问题
+
+```xml
+<select id="selectAll" resultType="pojo.User">
+        select * from tb_user;
+    </select>
+```
+
+这里主要是改变一下resultType的名称为我们创建在pojo文件夹中的User类
+
+​	5.编码
+
+​				  1.定义POJO类
+
+​				  2.加载核心配置文件，获取SqlSessionFactory对象
+
+​				  3.获取SqlSession对象,执行SQL语句
+
+​				  4.释放资源
+
+```java
+        //加载mybatis的核心配置文件 获取sqlsessionfactory
+        String resource = "mybatis-config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+        //获取Sqlsession对象,用它来执行sql
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        //执行sql
+        List<Object> users = sqlSession.selectList("test.selectAll");
+        System.out.println(users);
+        //释放资源
+        sqlSession.close();
+
+```
+
+### 使用Mapper代理完成入门案例
+
+1. 定义与SQL映射文件同名的Mapper接口,并且将Mapper接口和SQL映射文件放置在同一目录下
+
+![image-20230310004941074](C:\Users\lyh\AppData\Roaming\Typora\typora-user-images\image-20230310004941074.png)
+
+这里需要注意的是在resources下面的mapper是要与上面的java存在接口的文件名相同,然后将UserMapper.xml文件拖进去,用Maven构建测试接口与xml文件是不是在同一个文件夹中
+
+2.设置SQL映射文件的namespace属性为Mapper接口全限定名
+
+```xml
+<!--namespace改为接口文件下面的接口 -->
+<mapper namespace="mapper.UserMapper">
+    <select id="selectAll" resultType="pojo.User">
+        select * from tb_user;
+    </select>
+</mapper>
+```
+
+3.在Mapper接口中定义方法,方法名就是SQL映射文件中sql语句的id,并保持参数类型和返回值类型一致
+
+```java
+public interface UserMapper
+{
+    List<User> selectAll();
+}
+//因为获取的是一组数据 所以是List 后面的方法是前面select的id方法
+```
+
+4.编码
+
+1. 通过SqlSession的getMapper方法获取 Mapper接口的代理对象
+2. 调用对应方法完成sql的执行
+
+```java
+UserMapper mapper = sqlSession.getMapper(UserMapper.class);//这里用的就是接口里面的方法
+        List<User> users = mapper.selectAll();//实例化方法
+```
+
+### 用mybatis来进行查询
+
+- 比如这里我查询了tb_brand表中的id为1的数据 需要先在Brand接口中添加一个方法为
+
+  ```java
+  Brand selectByID(int id);
+  ```
+
+- 然后在BrandMapper.xml中进行配置sql查询方法
+
+```xml
+<select id="selectByID" resultType="pojo.Brand">
+        select *
+        from tb_brand where id=#{id};
+    </select>
+```
+
+- 最后在test文件夹中进行执行方法的测试
+
+```java
+//3.获取Mapper接口的代理对象
+        BrandMapper brandMapper=sqlSession.getMapper(BrandMapper.class);
+//4.执行方法
+        Brand brand = brandMapper.selectByID(id);
+        System.out.println(brand);
+```
+
+- 查询结果
+
+$$
+Brand{id=1, brandName='三只松鼠', companyName='三只松鼠股份有限公司', ordered=5, description='不好吃还贵', status=0}
+$$
+
+- 在使用过程中有一个参数占位符
+- #{}:执行SQL时,会将#{}占位符替换成?,自动设置参数值
+- ${}:拼SQL,会存在SQL注入问题 比如我在id=${id};当我传入id=1时,会显示1
+- 参数传递用#{}
+- 如果要对表名,列名进行动态设置,只能用${}进行sql拼接
+
+2.SQL语句中特殊字符处理:
+
+- 转义字符
+- <![CDATA[内容]]>
+
+```xml
+from tb_brand where id <![CDATA[>
+    ]]>#{id};
+```
+
+(但是还是没能用上<符号..)
+
+### 条件查询
+
+- 散装查询:如果方法中有多个参数,需要使用@Param("SQL参数占位符名称")
+
+```java
+List<Brand> selectByCondition(@Param("status")int status, @Param("companyName")String companyName, @Param("brandName")String brandName);
+```
+
+
+
+- 对象参数:对象的属性名称要和参数占位符名称一致
+
+如果我们要运用到模糊查询的话 要用到**like#**这样的字段
+
+```xml
+<select id="selectByCondition" resultType="pojo.Brand">
+    select *from tb_brand
+    where status=#{status}
+    and companyName like#{companyName}<!--模糊查询 用like#{SQL名}-->
+        and brandName like#{brandName}
+    </select>
+```
+
+### 多条件动态查询
+
+if:用于判断参数是否有值,使用test属性进行条件判断
+
+如果只查其中一个值时 可能会出现问题 出现where and...的报错,
+
+需要使用<where>标签替换where关键字
+
+```xml
+<where>
+        <if test="status!=null">
+            and status=#{status}
+        </if>
+        <if test="companyName!=null and companyName!=''">
+            and companyName like#{companyName}<!--模糊查询 用like#{SQL名}-->
+        </if>
+        <if test="brandName!=null and brandName!=''">
+            and brandName like#{brandName}
+        </if>
+    </where>
+```
+
+### 单条件动态查询
+
+- **choose(when,otherwise)**:选择,相当于switch语句
+
+但是如果用where标签后,就可以不用写otherwise
+
+```xml
+ <select id="selectByConditionSingle" resultType="pojo.Brand">
+        select * from tb_brand
+       <where>
+           <choose>
+               <when test="status!=null">
+                   status=#{status}
+               </when>
+               <when test="companyName!=null and companyName!=''">
+                   companyName like#{companyName}
+               </when>
+               <when test="brandName!=null and brandName!=''">
+                   brandName like#{brandName}
+               </when>
+           </choose>
+       </where>
+    </select>
+```
+
+### 添加功能
+
+- 在BrandMapper.xml中添加 insert
+
+```xml
+<insert id="add">
+        insert into tb_brand(brandName,companyName,ordered,description,status)
+        values(#{brandName},#{companyName},#{ordered},#{description},#{status});
+    </insert>
+```
+
+- 然后再BrandMapper中添加方法
+
+```java
+ void add(Brand brand);
+```
+
+- 最后在测试中执行方法
+
+其中在执行添加时,如果不进行提交会导致事物回滚,无法记录进入sql中去,所有有两种方法来进行提交事物
+
+- openSession():默认开启事物,进行增删改操作后需要使用sqlSession.commit();手动提交事物
+
+```java
+//4.执行方法
+        brandMapper.add(brand);
+        //4.1提交事物
+        sqlSession.commit();
+```
+
+- openSession(true):可以设置为自动提交事物(关闭事物)
+
+```java
+ //2.获取sqlSession对象
+        SqlSession sqlSession=sqlSessionFactory.openSession(true);
+```
+
+### 全部修改功能
+
+```xml
+<!--修改功能-->
+    <update id="update">
+        update tb_brand
+        set
+        brandName=#{brandName},
+        companyName=#{companyName},
+        ordered=#{ordered},
+        description=#{description},
+        status=#{status}
+        where id=#{id};
+    </update>
+```
+
+这里是通过id来进行修改的,通过查询到的id来进行修改,在BrandMapper中的接口是
+
+```java
+int update(Brand brand);
+```
+
+### 动态修改字段
+
+```xml
+<update id="update">
+        update tb_brand
+        <set>
+        <if test="brandName!=null and brandName!=''">
+            brandName=#{brandName}
+        </if>
+        <if test="status!=null">
+            status=#{status}
+        </if>
+        <if test="companyName!=null and companyName!=''">
+            companyName=#{companyName}
+        </if>
+        <if test="ordered!=null and ordered!=''">
+            ordered=#{ordered}
+        </if>
+        <if test="description!=null and description!=''">
+            description=#{description}
+        </if>
+        where id=#{id};
+        </set>
+    </update>
+```
+
+通过if去判断来进行修改,如果只修改一个值,用set语句,这样可以防止只传入一个参数时,其他参数被置为null的情况
+
+### 删除功能
+
+- 单个删除(通过id进行删除)
+
+```xml
+<delete id="deleteById">
+        delete from tb_brand where id=#{id}
+    </delete>
+```
+
+- 批量删除(通过ids[]数组进行删除)
+
+```java
+void deleteByIds(@Param("ids") int ids[]);
+```
+
+- 默认:array=数组 array ,或者在BrandMapper中用@Param改变Map集合默认key的名称
+- item是元素
+- separator是分隔符
+- 数组通过foreach来遍历 这里的collection="ids"是通过前面的Param来改变的名称
+
+```xml
+<delete id="deleteByIds">
+        delete from tb_brand where id
+        in(
+            <foreach collection="ids" item="id" separator=",">
+                #{id}
+            </foreach>
+        );
+    </delete>
+```
+
+# 35、TomCat
+
+- 也被称为Web容器,Servlet容器. Servlet需要依赖于Tomcat运行
+
+# 36、Servlet
+
+- Servlet是Java提供的一门动态web资源开发技术
+- Servlet本质上是一个接口,是由JavaEE(Java企业版)的规范之一
+
+1. 创建web项目,导入Servlet依赖坐标
+
+```xml
+<dependencies>
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <version>4.0.4</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+```
+
+​	2.创建:定义一个类,实现Servlet接口,并重写接口中所有方法(用alt+enter就可以完成全部重写)
+
+```java
+ public void service(ServletRequest servletRequest, ServletResponse servletResponse) throws ServletException, IOException
+    {
+        System.out.println("servlet hello world");
+    }
+```
+
+​	3.配置:在类上使用@WebServlet注解,配置该Servlet的访问路径
+
+```java
+@WebServlet("/demo1")
+public class Demo1 implements Servlet
+```
+
+​	4.访问:启动Tomcat,访问到该Servlet
+
+- Servlet运行在Servlet容器(web服务器)中,其生命周期由容器来管理,分为4个阶段
+
+1. **加载和实例化**:默认情况下,当Servlet第一次被访问时,由容器创建Servlet对象
+2. **初始化**:在Servlet实例化之后,容器将调用Servlet的**init()**方法初始化这个对象,完成一些如加载配置文件、创建链接等初始化的工作;该方法只**调用一次**
+3. **请求处理**:每次请求Servlet时,Servlet容器都会调用Servlet的**service()**方法对请求进行处理
+4. **服务终止**:当需要释放内存或者容器关闭时,容器就会调用Servlet实例的destroy()方法完成资源的释放.在**destroy()**方法调用之后,容器会释放这个Servlet实例,该实例随后会被Java的垃圾收集器所回收
+
+HttpServlet使用步骤
+
+1. 继承HttpServlet
+2. 重写doGet和doPost方法
+
+HttpServlet原理
+
+​	获取请求方式,并根据不同的请求方式,调用不动的方法
+
+- 在HttpServlet中会根据不同的请求方式来调用不同的方法,是根据Get和Post的请求消息不大一样,需要分别处理
+- 通过不同的请求逻辑,用if_else语句进行判断调用
+
+### Servlet的urlPattern配置
+
+1. 精确匹配:
+
+- 配置路径:
+
+  ```java
+  @WebServlet("/demo2")
+  ```
+
+- 访问路径:用localhost:8080后面跟随demo2就可以访问了
+
+​	2.目录匹配
+
+- 配置路径:
+
+  ```java
+  @WebServlet("/demo2/*")
+  ```
+
+- 访问路径:与精确匹配差不多,但是会先访问到精确匹配
+
+​	3.扩展名匹配
+
+- 配置路径
+
+```java
+@WebServlet("*.do")
+```
+
+- 访问路径:在后面跟.do
+
+​	4.任意匹配
+
+- 配置路径
+
+  ```java
+  @WebServlet("/")
+  @WebServlet("*")
+  ```
+
+- 访问路径:无论访问什么路径,都会访问到这个设置的任意匹配路径来
+
+### Request&&Respons
+
+- Request:获取请求数据
+- Responss:设置响应数据
+
+一些请求方式:
+
+```java
+ //获取请求方式:GET
+        String method = req.getMethod();
+        System.out.println(method);
+        //获取虚拟目录(项目访问路径):/request-demo
+        String contextPath = req.getContextPath();
+        System.out.println(contextPath);
+        //获取URL(统一资源定位符)
+        StringBuffer requestURL = req.getRequestURL();
+        System.out.println(requestURL);
+        //获取URI(统一源标识符)
+        String requestURI = req.getRequestURI();
+        System.out.println(requestURI);
+        //获取请求参数(GET方法)
+        String queryString = req.getQueryString();
+        System.out.println(queryString);
+```
+
+#### 登录请求
+
+先写好html文件:
+
+```html
+<form action="demo3" method="post">//这个demo3就是我WebServlet的设置名称 用post请求方式 这里只能用post去请求,用get请求不到
+    UserName:<input type="text" name="username"/><br />
+    PassWord:<input type="password" name="password"/><br />
+    <input type="submit" value="Submit">
+  </form>
+```
+
+然后再demo3中写:
+
+```java
+ protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+    {
+       //获取post的请求体
+
+        //1.获取字符输入流
+        BufferedReader reader = req.getReader();
+        //2.读取数据
+        String line=reader.readLine();
+        System.out.println(line);
+    }
+```
+
+### 使用Request通用方法来获取请求参数
+
+- Map<String String[] getParameterMap()>:获取所有参数Map集合
+- String[]getParameterValues(String name):根据名称获取参数值(数组)
+- String getParameter(String name):根据名称获取参数值(单个值)
+
+```java
+ //Get请求
+        System.out.println("Get!");
+        //获取所有参数的Map集合
+        Map<String, String[]> parameterMap = req.getParameterMap();
+        for(String key: parameterMap.keySet())
+        {
+            System.out.print(key+":");
+            //获取值
+            String[]values= parameterMap.get(key);
+            for(String value:values)
+                System.out.println(value+":");
+            System.out.println();
+        }
+        System.out.println("----------------------");
+        //获取对应的参数值
+        String[] hobbies = req.getParameterValues("hobby");
+        for(String s:hobbies)
+        {
+            System.out.println(s);
+        }
+        //根据key获取单个参数值
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+        System.out.println(username);
+        System.out.println(password);
+
+protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+    {
+       //获取post的请求体
+        this.doGet(req, resp);
+    }
+```
+
+```html
+ <form action="demo3" method="post">
+    UserName:<input type="text" name="username"/><br/>
+    PassWord:<input type="password" name="password"/><br/>
+      <input type="checkbox" name="hobby" value="1">Swim
+      <input type="checkbox" name="hobby" value="2">Soccer<br>
+    <input type="submit" value="Submit">
+  </form>
+```
+
+在post中调用get后就可以请求到get中去了
+
+### 请求转发
+
+- 请求转发(forword):一种在服务器内部的资源跳转方式
+
+- 实现方法:
+
+- ```java
+  req.getRequestDispatcher("资源B路径").forward(req,resp);
+  ```
+
+- 请求转发资源间共享数据:使用Request对象
+- void setAttribute(String name,Object o):存储数据到request域中;
+- Object getAttribute(String name):根据key,获取值;
+- void removeAttribute(String name):根据key,删除该键值对
+
+#### 它的特点
+
+- 浏览器地址栏路径不发生变化
+- 只能转发到当前服务器的内部资源
+- 一次请求,可以在转发的资源间使用request共享数据
+
+Demo3中:
+
+```java
+ 		System.out.println("demo3");
+        //存储数据
+        req.setAttribute("Fuck","You");
+        //请求转发
+        req.getRequestDispatcher("/demo5").forward(req,resp);
+```
+
+Demo5中:
+
+```java
+		System.out.println("哈哈哈哈");
+        Object fuck = req.getAttribute("Fuck");
+        System.out.println(fuck);
+        //输出的就是You 和 上面的哈哈哈哈
+```
+
+### 案例:登录与注册
+
+1.首先进行登录页面的编写
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html";charset="UTF-8";>
+    <title>Login</title>
+</head>
+<body>
+  <form action="demo3" method="post">
+    UserName:<input type="text" name="username"/><br/>
+    PassWord:<input type="password" name="password"/><br/>
+    <input type="submit" value="Submit">
+      <input type="reset" value="reset">
+      <a href="register.html">No Username?Register Now!</a>
+  </form>
+</body>
+</html>
+```
+
+2.编写好后,准备mybatis的数据
+
+在resources中添加mybatis-config.xml文件 里面放置数据库连接信息
+
+提前创建好数据库db1并在其库中建立表单tb_user
+
+3.在resources中建立一个Mapper文件夹用于存放UserMapper.xml
+
+UserMapper.xml中存放名称空间
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    namespace:名称空间
+-->
+<mapper namespace="mapper.UserMapper">
+
+</mapper>
+```
+
+4.在java下的文件中添加一个用于装UserMapper接口的文件
+
+```java
+public interface UserMapper
+{
+    @Select("select *from tb_user where username= #{username} and password= #{password}")
+    User select(@Param("username")String username, @Param("password")String password);
+
+    //根据用户名查询是否存在
+    @Select("select *from tb_user where username= #{username}")
+    User selectByUsername(String username);
+
+    //添加用户
+    @Insert("insert into tb_user values(null,#{username},#{password})")
+    void add(User user);
+}
+```
+
+5.建立一个pojo文件夹,用于装User对象
+
+对象中主要储存id username password
+
+```java
+public class User
+{
+    private Integer id;
+    private String username;
+    private String password;
+
+    public User() 
+    {
+    }
+}
+```
+
+6.现在可以进行登录页面的后端书写了
+
+```java
+@WebServlet("/demo3")
+public class ServletDemo3 extends HttpServlet
+{
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+    {
+        //1.接收用户名和密码
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+        //2.调用Mybatis完成查询
+        String resource = "mybatis-config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        SqlSessionFactory sqlSessionFactory =new SqlSessionFactoryBuilder().build(inputStream);
+        //2.2获取SqlSession对象
+        SqlSession sqlSession=sqlSessionFactory.openSession();
+        //2.3获取Mapper
+        UserMapper userMapper=sqlSession.getMapper(UserMapper.class);
+        //2.4调用方法
+        User user=userMapper.select(username,password);
+        //2.5释放资源
+        sqlSession.close();
+
+        PrintWriter writer = resp.getWriter();
+        resp.setContentType("text/html;charset=utf-8");
+        //3.判断User是否为null
+        if(user!=null)
+        {
+            //登录成功
+           resp.sendRedirect("welcome.html");
+        }
+        else
+        {
+            //登录失败
+            writer.write("登录失败!");
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+    {
+       //获取post的请求体
+        this.doGet(req, resp);
+    }
+}
+```
+
+7.然后是注册页面后端书写
+
+```java
+@WebServlet(value = "/demo4")
+public class ServletDemo4 extends HttpServlet
+{
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+    {
+        //1.接受用户数据
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+
+        //封装用户对象
+        User user=new User();
+        user.setUsername(username);
+        user.setPassword(password);
+
+        //2.调用Mybatis完成查询
+        String resource = "mybatis-config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        SqlSessionFactory sqlSessionFactory =new SqlSessionFactoryBuilder().build(inputStream);
+        //2.2获取SqlSession对象
+        SqlSession sqlSession=sqlSessionFactory.openSession();
+        //2.3获取Mapper
+        UserMapper userMapper=sqlSession.getMapper(UserMapper.class);
+        //2.4调用方法
+        User user1 = userMapper.selectByUsername(username);
+
+        //3.判断用户对象是否为null
+        if(user1==null)
+        {
+            //说明用户名不存在 可用 添加用户
+            userMapper.add(user);
+            //提交事物
+            sqlSession.commit();
+            sqlSession.close();
+            resp.sendRedirect("login.html");
+        }
+        else
+        {
+            //不能添加
+            resp.setContentType("text/html;charset=utf-8");
+            resp.getWriter().write("不要取公交车用户名哦!");
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        this.doGet(req, resp);
+    }
+}
+```
+
+# 37、Cookie
+
+### cookie基本使用
+
+**发送Cookie**
+
+- 1.创建Cookie对象,设置数据
+
+```java
+Cookie cookie=new Cookie("username","zs");
+//第一个是key 第二个是value
+```
+
+- 2.发送Cookie到客户端:使用response对象
+
+```java
+resp.addCookie(cookie);
+```
+
+**获取Cookie**
+
+- 1.获取客户端携带的所有Cookie,使用request对象
+
+```java
+Cookie[]cookies=req.getCookies();
+```
+
+- 2.遍历数组,获取每一个Cookie对象:for
+- 3.使用Cookie对象方法获取数据
+
+```java
+cookie.getName();
+cookie.getValue();
+```
+
+总体代码:
+
+```java
+ protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+    {
+       //获取Cookie数组
+        Cookie[] cookies = req.getCookies();
+        for(var cookie:cookies)
+        {
+                String name=cookie.getName();
+                String value=cookie.getValue();
+                System.out.println(name+":"+value);
+                break;
+        }
+
+    }
+```
+
+### cookie原理
+
+- Cookie的实现是基于HTTP协议的
+
+- 响应头:set-cookie
+- 请求头:cookie
+
+**Cookie存活时间**
+
+- 默认情况下,Cookie存储在浏览器内存中,当浏览器关闭,内存释放,则Cookie被销毁
+- setMaxAge(int seconds):设置Cookie存活时间
+
+1. 正数:将Cookie写入浏览器所在电脑的硬盘,持久化存储
+2. 负数:默认值,Cookie在当前浏览器内存中,当浏览器关闭,则Cookie被销毁
+3. 0:删除对应Cookie
+
+**Cookie存储中文**
+
+# 38、Session
+
+### Session基本
+
+- 服务端回话跟踪技术:将数据保存到服务端
+- JavaEE提供的HttpSession接口,来实现一次回话的多次请求
+- 使用
+
+1.获取Session对象
+
+```java
+HttpSession session=request.getSession();
+```
+
+2.Session对象功能
+
+| 函数名                                  | 功能                  |
+| --------------------------------------- | --------------------- |
+| Object getAttribute(String name)        | 根据key获取值         |
+| void setAttribut(String name ,Object o) | 存储数据到session域中 |
+| void removeAttribute(String name)       | 根据key,删除该键值对  |
+
+- Session钝化、活化:
+
+  **钝化**:在服务器正常关闭后,Tomcat会自动将Session数据写入硬盘文件中
+
+  **活化**:再次启动服务器后,从文件中加载数据到Session中
+
+- Session销毁:
+
+  **默认:**无操作情况下,30分钟自动销毁
+
+  还可以调用Session对象的invalidate()方法
+
+## Cookie和Session小结
+
+- Cookie和Session都是来完成一次回话内多次请求间**数据共享**的
+
+- 区别:
+
+​	
+
+|            | Cookie                                                       | Session                           |
+| ---------- | ------------------------------------------------------------ | --------------------------------- |
+| 存储位置   | 客户端                                                       | 服务端                            |
+| 安全性     | 不安全(在网络端进行传输时,被拦截,或者存在本地浏览器的Cookie可能会被他人盗取) | 安全(存储在服务器端,不容易被攻破) |
+| 数据大小   | 最大3KB                                                      | 无大小限制                        |
+| 存储时间   | 可以长期存储                                                 | 默认30min                         |
+| 服务器性能 | 不占用服务器资源                                             | 占用服务器资源                    |
+
+## 案例:登录注册升级版
+
+可以实现账号密码的记住cookie功能,以及用jsp实现提示功能
+
+- 登录
+
+一般需要三个层面
+
+- Dao层
+
+也就是控制数据库那一层,主要使用mybatis来控制数据库中数据
+
+```java
+String resource = "mybatis-config.xml";
+    InputStream inputStream;
+    {
+        try {
+            inputStream = Resources.getResourceAsStream(resource);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    SqlSessionFactory sqlSessionFactory =new 				SqlSessionFactoryBuilder().build(inputStream);
+    //登录方法
+    public User login(String username,String password)
+    {
+        //获取sqlSession
+        SqlSession sqlSession=sqlSessionFactory.openSession();
+        //获取UserMapper
+        UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+        //调用方法
+        User user = mapper.select(username, password);
+        //释放资源
+        sqlSession.close();
+        return user;
+    }
+```
+
+- Service层
+
+调用userMapper中的select方法
+
+```java
+@Select("select *from tb_user where username= #{username} and password= #{password}")
+    User select(@Param("username")String username, @Param("password")String password);
+
+    //根据用户名查询是否存在
+    @Select("select *from tb_user where username= #{username}")
+    User selectByUsername(String username);
+
+    //添加用户
+    @Insert("insert into tb_user values(null,#{username},#{password})")
+    void add(User user);
+```
+
+- Web层
+
+1.接受用户名和密码
+
+2.调用service查询User
+
+3.判断User是否为null(就是判断数据库中是否有该用户存在)
+
+```java
+ private UserService service=new UserService();
+
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+       //获取用户填写的用户名和密码
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+
+        User user=new User();
+        user.setUsername(username);
+        user.setPassword(password);
+
+        //调用Service注册
+        boolean flag=service.register(user);
+        //判断是否成功
+        if(flag)
+        {
+            //跳转登录页面
+            req.setAttribute("register_msg","注册成功,请登录!");
+            req.getRequestDispatcher("/login.jsp").forward(req,resp);
+        }
+        else
+        {
+            //注册失败 跳转注册失败
+            req.setAttribute("register_msg","用户名已存在!");
+            req.getRequestDispatcher("/register.jsp").forward(req,resp);
+        }
+    }
+    
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+    {
+        this.doGet(req, resp);
+    }
+```
+
+- 开始写Cookie
+
+主要是在Web层来书写
+
+- Web层
+
+1.接受用户名和密码
+
+2.调用service查询User
+
+3.判断User是否为null
+
+3.1判断是否勾选记住用户
+
+3.2勾选:写cookie
+
+jsp页面:
+
+```html
+ <div>${login_msg}${register_msg}</div>
+    UserName:<input type="text" value="${cookie.username.value}" name="username"/><br/>
+    PassWord:<input type="password" value="${cookie.password.value}"  name="password"/><br/>
+    Remember:<input type="checkbox" value="1" name="remember">
+```
+
+Web LoginServlet页面:
+
+```java
+private UserService service=new UserService();
+
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+
+
+        String remember = req.getParameter("remember");
+        //调用对应Service来查询
+        User user=service.login(username,password);
+        //判断
+        if(user!=null)
+        {
+            //登录成功
+            if("1".equals(remember))
+            {
+                //创建cookie对象
+                Cookie c_username=new Cookie("username",username);
+                Cookie c_password=new Cookie("password",password);
+                //设置存活时间
+                c_username.setMaxAge(60*60*24*7);
+                c_password.setMaxAge(60*60*24*7);
+                resp.addCookie(c_username);
+                resp.addCookie(c_password);
+            }
+            //将登录成功后的user对象,存储在session中
+            HttpSession session = req.getSession();
+            session.setAttribute("user",user);
+            //重定向
+            resp.sendRedirect("welcome.jsp");
+        }
+        else
+        {
+            //登录失败
+            req.setAttribute("login_msg","用户名或密码错误");
+            //跳转到login.jsp
+            req.getRequestDispatcher("/login.jsp").forward(req,resp);
+        }
+    }
+```
+
+- 注册
+
+- Dao层
+
+需要两个方法
+
+一个是void add(user)
+
+另一个是User select(username)//这个主要是判断用户名是否存在
+
+```java
+@Select("select *from tb_user where username= #{username}")
+    User selectByUsername(String username);
+
+    //添加用户
+    @Insert("insert into tb_user values(null,#{username},#{password})")
+    void add(User user);
+```
+
+- Service层
+
+在register中 判断用户名是否存在,如果不存在就添加新用户
+
+```java
+ public boolean register(User user)
+    {
+        //获取sqlSession
+        SqlSession sqlSession=sqlSessionFactory.openSession();
+        //获取UserMapper
+        UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+        //判断用户名是否存在
+        User user1 = mapper.selectByUsername(user.getUsername());
+        if(user1==null)
+        {
+            //用户名不存在
+            mapper.add(user);
+            sqlSession.commit();
+            return true;
+        }
+        sqlSession.close();
+        return user1==null;
+    }
+```
+
+- Web层
+
+1.接受用户信息
+
+2.调用service添加
+
+3.注册成功,则跳转登录页面
+
+4.注册失败,给出提示信息
+
+jsp:
+
+```html
+<%@ page isELIgnored="false" %>
+<form action="registerservlet" method="post">
+  <h1>Welcome to Register!</h1>
+  <div>${register_msg}</div>
+  RegisterUserName:<input type="text" name="username"/><br/>
+  RegisterPassWord:<input type="password" name="password"/><br/>
+  <input type="submit" value="Submit">
+  <input type="reset" value="reset">
+  <a href="login.jsp">I have a account,Login IN!</a>
+</form>
+```
+
+java:
+
+```java
+private UserService service=new UserService();
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+       //获取用户填写的用户名和密码
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+
+        User user=new User();
+        user.setUsername(username);
+        user.setPassword(password);
+
+        //调用Service注册
+        boolean flag=service.register(user);
+        //判断是否成功
+        if(flag)
+        {
+            //跳转登录页面
+            req.setAttribute("register_msg","注册成功,请登录!");
+            req.getRequestDispatcher("/login.jsp").forward(req,resp);
+        }
+        else
+        {
+            //注册失败 跳转注册失败
+            req.setAttribute("register_msg","用户名已存在!");
+            req.getRequestDispatcher("/register.jsp").forward(req,resp);
+        }
+    }
+```
+
+# 39、Filter
+
+- 概念:Filter表示过滤器,是JavaWeb三大组件(Servlet  Filter  Listener)之一
+- 过滤器可以把对资源的请求**拦截**下来,从而实现一些特殊功能
+- 过滤器一般完成一些**通用**的操作,比如:权限控制,统一编码处理,敏感字符处理等
+
+### 快速入门
+
+1.定义类,实现Filter接口,并重写其方法,注意这里的Filter是jakarta.servlet
+
+2.配置Filter拦截资源的路径,在类上定义@WebFilter注解
+
+```java
+@WebFilter("/*")
+//也可以直接拦截固定的项目
+@WebFilter("/welcome.jsp")
+```
+
+3.放行
+
+```java
+ @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        System.out.println("FilterDemo...");
+        //放行
+        filterChain.doFilter(servletRequest, servletResponse);
+    }
+```
+
+### 注册拦截案例
+
+```java
+@WebFilter("/*")
+public class FilterDemo implements Filter
+{
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        HttpServletRequest req=(HttpServletRequest) servletRequest;
+        //判断访问资源路径是否和登录注册相关
+        String []urls={"/login.jsp","/loginservlet","/register.jsp","registerservlet"};
+        //获取访问资源路径
+        String url = req.getRequestURL().toString();
+        //循环判断
+        for(String s:urls)
+        {
+            if(url.contains(s))
+            {
+                filterChain.doFilter(servletRequest, servletResponse);
+                return;
+            }
+        }
+
+        //1.判断session中是否有user
+        HttpSession session= req.getSession();
+        Object user = session.getAttribute("user");
+        //放行
+        if(user!=null)
+            filterChain.doFilter(servletRequest, servletResponse);
+        else//没有账号登录
+        {
+            req.setAttribute("login_msg","您尚未登录!");//给出提示信息,拦截登录
+            req.getRequestDispatcher("/login.jsp").forward(servletRequest, servletResponse);
+        }
+
+    }
+}
+```
+
+   其实还有一个就是在WebFilter里面直接添加/welcome.jsp拦截,这样就不会一进浏览器就报尚未登录的提示了
+
+# 40、Listener
+
+- 概念:Listener表示监听器,也是JavaWeb的三大组件之一
+- 监听器可以监听就是在application,session,request三个对象,销毁或者往其中添加修改删除属性时**自动**执行代码的功能组件
+- Listener分类:JavaWeb中提供了8个监听器
+
+| 监听器分类         | 监听器名称                       | 作用                                         |
+| ------------------ | -------------------------------- | -------------------------------------------- |
+| ServletContext监听 | ServletContextListener           | 用于对ServletContext对象进行监听(创建,销毁)  |
+|                    | ServletContextAttributeListrener | 对ServletContext对象中属性的监听(增删改属性) |
+| Session监听        | HttpSessionListener              | 对Session对象的整体状态的监听(创建,销毁)     |
+|                    | HttpSessionAttributeListener     | 对Session对象中的属性监听(增删改属性)        |
+|                    | HttpSessionBindingListener       | 监听对于Session的绑定和解除                  |
+|                    | HttpSessionActivationListener    | 对Session数据的钝化和活化的监听              |
+| Request监听        | ServletRequestListener           | 对Request对象进行监听(创建,销毁)             |
+|                    | ServletRequestAttributeListener  | 对Request对象中的属性监听(增删改属性)        |
+
+```java
+@WebListener
+public class ContextLoaderListener implements ServletContextListener
+{
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        //加载资源
+        System.out.println("ContextLoaderListener被执行了!");
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+
+    }
+}
+```
+
+# 41、AJAX
+
+- 概念:AJAX(Asynchronous JavaScript And XML):**异步**的JavaScript和XML
+
+- AJAX作用:
+
+​			1.与服务器进行数据交换:通过AJAX可以给服务器发送请求,并获取服务器响应的数据
+
+​				可以使用AJAX和服务器进行通信,就可以使用HTML+AJAX来替换JSP页面
+
+​			2.异步交互:可以在不重新加载整个页面的情况下,与服务器交换数据并更新部分网页的技术,如:搜索联想,用户名是否可用校验,等等......
+
+![image-20230511222237049](C:\Users\lyh\AppData\Roaming\Typora\typora-user-images\image-20230511222237049.png)
+
+同步进行的话需要等待服务器的响应,而异步进行不需要等待服务器的响应
+
+```java
+@WebServlet("/selectuserservlet")
+public class SelectUserServlet extends HttpServlet
+{
+    private final UserService service=new UserService();
+
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+        //获取用户填写的用户名和密码
+        String username = req.getParameter("username");
+        User user=new User();
+        user.setUsername(username);
+        //调用Service注册
+        boolean flag=service.username_judge(user.getUsername());
+        resp.getWriter().write(""+flag);
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        doGet(req, resp);
+    }
+}
+```
+
+UserService:
+
+```java
+ public boolean username_judge(String username)
+    {
+        //获取sqlSession
+        SqlSession sqlSession=sqlSessionFactory.openSession();
+        //获取UserMapper
+        UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+        //判断用户名是否存在
+        String username1 = mapper.selectByUsername1(username);
+        if(username1==null)
+        {
+            //用户名不存在
+            return false;
+        }
+        sqlSession.close();
+        return true;
+    }
+```
+
+html:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register</title>
+</head>
+<body>
+<form action="selectuserservlet" method="post">
+  RegisterUserName:<input type="text" name="username" id="username"><br>
+  <span id="username_err" class="err_msg" style="display: none">用户名已存在</span>
+  RegisterPassWord:<input type="password" name="password"><br>
+  <input type="submit" value="Submit">
+  <input type="reset" value="reset">
+  <a href="login.html">I have a account,Login IN!</a>
+</form>
+<script>
+  document.getElementById("username").onblur=function ()
+  {
+    //发送AJAX请求
+    var username =this.value;
+    //创建核心对象
+    var xhttp;
+    if(window.XMLHttpRequest)
+    {
+      xhttp=new XMLHttpRequest();
+    }
+    else
+    {
+      xhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    //发送请求
+    xhttp.open("GET","http://localhost:8080/TomCat_war/selectuserservlet?username="+username);
+    xhttp.send();
+
+    //获取响应
+    xhttp.onreadystatechange=function ()
+    {
+      if(this.readyState==4&&this.status==200)
+      {
+        /*alert(this.responseText);*/
+        //判断
+        if(this.responseText=="true")
+        {
+          //用户名存在 显示提示信息
+          document.getElementById("username_err").style.display='';
+        }
+        else
+        {
+          //不存在,清除提示信息
+          document.getElementById("username_err").style.display='none';
+        }
+      }
+    };
+  }
+</script>
+
+</body>
+</html>
+```
+
